@@ -1,9 +1,8 @@
-import 'dart:typed_data';
+import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:gallery_app/Views/ViodeoPage/video1_page.dart';
+import 'package:gallery_app/Views/ImagePage/image1_page.dart';
 import 'package:gallery_app/Widget/videoplayer_widget.dart';
 import 'package:photo_manager/photo_manager.dart';
-import 'package:gallery_app/Views/ImagePage/image1_page.dart';
 
 class AlbumPage extends StatefulWidget {
   final AssetPathEntity album;
@@ -42,59 +41,56 @@ class _AlbumPageState extends State<AlbumPage> {
     }
   }
 
+  void _removeImage(AssetEntity asset) {
+    setState(() {
+      _media.remove(asset);
+    });
+    if (_media.isEmpty) {
+      Navigator.of(context).pop(); // Close the album page
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    Size size = MediaQuery.sizeOf(context);
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.album.name),
       ),
       body: _isLoading
           ? Center(child: CircularProgressIndicator())
-          : PageView.builder(
-              controller: PageController(initialPage: widget.initialIndex),
+          : GridView.builder(
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 3,
+                crossAxisSpacing: 4.0,
+                mainAxisSpacing: 4.0,
+              ),
               itemCount: _media.length,
               itemBuilder: (context, index) {
                 final asset = _media[index];
                 final type = asset.type; // Determine asset type
 
-                return FutureBuilder<Uint8List?>(
-                  future: _getThumbnailData(asset),
+                return FutureBuilder<File?>(
+                  future: asset.file,
                   builder: (context, snapshot) {
                     if (snapshot.connectionState == ConnectionState.waiting) {
                       return Center(child: CircularProgressIndicator());
                     } else if (snapshot.hasError || !snapshot.hasData) {
                       return Center(child: Text('Error loading media'));
                     } else {
-                      final thumbnail = snapshot.data;
-
-                      return GestureDetector(
-                        onTap: () async {
-                          if (type == AssetType.video) {
-                            final file = await asset.file;
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => VideoPage(file: file!),
-                              ),
-                            );
-                          } else if (type == AssetType.image) {
-                            final file = await asset.file; // Get the image file
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => ImagePage(
-                                  image: null, // No thumbnail needed
-                                  imageFile: file, // Pass the image file
-                                ),
-                              ),
-                            );
-                          }
-                        },
-                        child: type == AssetType.video
-                            ? VideoPlayerWidget(asset: asset)
-                            : Image.memory(thumbnail!),
-                      );
+                      final file = snapshot.data;
+                      if (type == AssetType.video && file != null) {
+                        return GestureDetector(
+                          onTap: () => _openVideoPage(context, file),
+                          child: VideoPlayerWidget(file: file),
+                        );
+                      } else if (type == AssetType.image && file != null) {
+                        return GestureDetector(
+                          onTap: () => _openImagePage(context, file, asset),
+                          child: Image.file(file, fit: BoxFit.cover),
+                        );
+                      } else {
+                        return Center(child: Text('Unsupported media type'));
+                      }
                     }
                   },
                 );
@@ -103,15 +99,18 @@ class _AlbumPageState extends State<AlbumPage> {
     );
   }
 
-  Future<Uint8List?> _getThumbnailData(AssetEntity asset) async {
-    try {
-      return await asset.thumbnailDataWithSize(
-        ThumbnailSize.square(350),
-        format: ThumbnailFormat.jpeg,
-      );
-    } catch (e) {
-      print('Error getting thumbnail: $e');
-      return null;
-    }
+  void _openImagePage(BuildContext context, File file, AssetEntity asset) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => ImagePage(
+          imageFile: file,
+          onDelete: () => _removeImage(asset), // Callback for deletion
+        ),
+      ),
+    );
+  }
+
+  void _openVideoPage(BuildContext context, File file) {
+    // Implement video page navigation
   }
 }
