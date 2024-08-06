@@ -9,8 +9,8 @@ import 'package:photo_manager/photo_manager.dart';
 class AlbumPage extends StatefulWidget {
   final AssetPathEntity album;
   final int initialIndex;
-
-  AlbumPage({required this.album, this.initialIndex = 0});
+  final VoidCallback? onDelete;
+  AlbumPage({required this.album, this.initialIndex = 0, this.onDelete});
 
   @override
   _AlbumPageState createState() => _AlbumPageState();
@@ -43,12 +43,30 @@ class _AlbumPageState extends State<AlbumPage> {
     }
   }
 
-  void _removeImage(AssetEntity asset) {
-    setState(() {
-      _media.remove(asset);
-    });
-    if (_media.isEmpty) {
-      Navigator.of(context).pop(); // Close the album page
+  void _removeImage(AssetEntity asset) async {
+    try {
+      // Get the file associated with the asset
+      final file = await asset.file;
+
+      if (file != null && await file.exists()) {
+        // Delete the file
+        await file.delete();
+
+        // Remove the asset from the media list
+        setState(() {
+          _media.remove(asset);
+        });
+
+        // Check if the album is empty
+        if (_media.isEmpty) {
+          widget.onDelete?.call(); // Refresh the albums list
+          Navigator.of(context).pop(); // Navigate back to AlbumsPage
+        }
+      } else {
+        print('Asset file not found');
+      }
+    } catch (e) {
+      print('Error deleting image: $e');
     }
   }
 
