@@ -1,7 +1,6 @@
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
-import 'package:photo_manager/photo_manager.dart';
 import 'package:image_editor/image_editor.dart';
 import 'package:share/share.dart';
 import 'package:path_provider/path_provider.dart';
@@ -63,7 +62,7 @@ class _ImagePageState extends State<ImagePage> {
               backgroundColor: Colors.black,
               unselectedItemColor: Colors.grey,
               selectedItemColor: Colors.black,
-              items: [
+              items: const [
                 BottomNavigationBarItem(
                   icon: Icon(Icons.share),
                   label: 'Share',
@@ -106,7 +105,7 @@ class _ImagePageState extends State<ImagePage> {
     if (_imageBytes != null) {
       final directory = await getTemporaryDirectory();
       final path = '${directory.path}/temp_image.jpg';
-      final file = File(path)..writeAsBytesSync(_imageBytes!);
+      // final file = File(path)..writeAsBytesSync(_imageBytes!);
       await Share.shareFiles([path], text: 'Check out this image!');
     }
   }
@@ -115,7 +114,7 @@ class _ImagePageState extends State<ImagePage> {
     if (_imageBytes != null) {
       final directory = await getExternalStorageDirectory();
       final path = '${directory!.path}/saved_image.jpg';
-      final file = File(path)..writeAsBytesSync(_imageBytes!);
+      // final file = File(path)..writeAsBytesSync(_imageBytes!);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Image saved to $path')),
       );

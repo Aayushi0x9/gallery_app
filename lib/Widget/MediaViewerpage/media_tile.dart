@@ -1,15 +1,14 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:gallery_app/Views/ViodeoPage/video1_page.dart';
+import 'package:gallery_app/Views/VideoPage/video1_page.dart';
 import 'package:photo_manager/photo_manager.dart';
 import 'package:gallery_app/Views/ImagePage/image1_page.dart';
-import 'package:gallery_app/Widget/videoplayer_widget.dart';
 
 class MediaViewerPage extends StatefulWidget {
   final List<AssetEntity> media;
   final int initialIndex;
-  final void Function(AssetEntity) onImageDeleted; // Add this linehis
-  MediaViewerPage({
+  final void Function(AssetEntity) onImageDeleted;
+  const MediaViewerPage.media_viewer({
     required this.media,
     required this.initialIndex,
     required this.onImageDeleted,
@@ -52,9 +51,9 @@ class _MediaViewerPageState extends State<MediaViewerPage> {
             future: asset.file,
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
-                return Center(child: CircularProgressIndicator());
+                return const Center();
               } else if (snapshot.hasError || !snapshot.hasData) {
-                return Center(child: Text('Error loading media'));
+                return const Center(child: Text('Error loading media'));
               } else {
                 final file = snapshot.data!;
                 if (asset.type == AssetType.video) {
@@ -77,14 +76,5 @@ class _MediaViewerPageState extends State<MediaViewerPage> {
         },
       ),
     );
-  }
-
-  void _removeImage(AssetEntity asset) {
-    setState(() {
-      widget.media.remove(asset);
-    });
-    if (widget.media.isEmpty) {
-      Navigator.of(context).pop(); // Close the viewer if no media remains
-    }
   }
 }

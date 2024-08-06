@@ -367,31 +367,25 @@ class _VideoPageState extends State<VideoPage> {
   }
 
   Future<void> _shareVideo() async {
-    if (widget.file != null) {
-      final directory = await getTemporaryDirectory();
-      final path = '${directory.path}/temp_video.mp4';
-      await widget.file.copy(path);
-      await Share.shareFiles([path], text: 'Check out this video!');
-    }
+    final directory = await getTemporaryDirectory();
+    final path = '${directory.path}/temp_video.mp4';
+    await widget.file.copy(path);
+    await Share.shareFiles([path], text: 'Check out this video!');
   }
 
   Future<void> _saveVideo() async {
-    if (widget.file != null) {
-      final directory = await getExternalStorageDirectory();
-      final path = '${directory!.path}/saved_video.mp4';
-      await widget.file.copy(path);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Video saved to $path')),
-      );
-    }
+    final directory = await getExternalStorageDirectory();
+    final path = '${directory!.path}/saved_video.mp4';
+    await widget.file.copy(path);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Video saved to $path')),
+    );
   }
 
   void _deleteVideo() async {
-    if (widget.file != null) {
-      await widget.file.delete();
-      Navigator.pop(context, widget.index);
-      Navigator.pop(context);
-    }
+    await widget.file.delete();
+    Navigator.pop(context, widget.index);
+    Navigator.pop(context);
   }
 
   @override
@@ -408,7 +402,7 @@ class _VideoPageState extends State<VideoPage> {
             Expanded(
               child: Center(
                 child: _isInitializing
-                    ? Center(child: CircularProgressIndicator())
+                    ? Center()
                     : _hasError
                         ? Center(child: Text('Error loading video'))
                         : AspectRatio(
@@ -461,7 +455,7 @@ class _VideoPageState extends State<VideoPage> {
               backgroundColor: Colors.black,
               unselectedItemColor: Colors.white,
               selectedItemColor: Colors.grey,
-              items: [
+              items: const [
                 BottomNavigationBarItem(
                   icon: Icon(Icons.share),
                   label: 'Share',

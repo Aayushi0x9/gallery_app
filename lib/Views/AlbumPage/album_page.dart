@@ -1,9 +1,6 @@
-import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
-import 'package:gallery_app/Views/ImagePage/image1_page.dart';
-import 'package:gallery_app/Widget/MediaTile/media_tile.dart';
-import 'package:gallery_app/Widget/videoplayer_widget.dart';
+import 'package:gallery_app/Widget/MediaViewerpage/media_tile.dart';
 import 'package:photo_manager/photo_manager.dart';
 
 class AlbumPage extends StatefulWidget {
@@ -77,9 +74,9 @@ class _AlbumPageState extends State<AlbumPage> {
         title: Text(widget.album.name),
       ),
       body: _isLoading
-          ? Center(child: CircularProgressIndicator())
+          ? const Center()
           : GridView.builder(
-              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: 3,
                 crossAxisSpacing: 4.0,
                 mainAxisSpacing: 4.0,
@@ -91,13 +88,14 @@ class _AlbumPageState extends State<AlbumPage> {
                 // Determine asset type
 
                 return FutureBuilder<Uint8List?>(
-                  future:
-                      asset.thumbnailDataWithSize(ThumbnailSize.square(200)),
+                  future: asset
+                      .thumbnailDataWithSize(const ThumbnailSize.square(200)),
                   builder: (context, snapshot) {
                     if (snapshot.connectionState == ConnectionState.waiting) {
-                      return Center(child: CircularProgressIndicator());
+                      return const Center();
                     } else if (snapshot.hasError || !snapshot.hasData) {
-                      return Center(child: Text('Error loading thumbnail'));
+                      return const Center(
+                          child: Text('Error loading thumbnail'));
                     } else {
                       final Uint8List? thumbnail = snapshot.data;
                       return GestureDetector(
@@ -110,29 +108,6 @@ class _AlbumPageState extends State<AlbumPage> {
                     }
                   },
                 );
-
-                // {
-                //   if (snapshot.connectionState == ConnectionState.waiting) {
-                //     return Center(child: CircularProgressIndicator());
-                //   } else if (snapshot.hasError || !snapshot.hasData) {
-                //     return Center(child: Text('Error loading media'));
-                //   } else {
-                //     final file = snapshot.data;
-                //     if (type == AssetType.video && file != null) {
-                //       return GestureDetector(
-                //         onTap: () => _openVideoPage(context, file),
-                //         child: VideoPlayerWidget(file: file),
-                //       );
-                //     } else if (type == AssetType.image && file != null) {
-                //       return GestureDetector(
-                //         onTap: () => _openImagePage(context, file, asset),
-                //         child: Image.file(file, fit: BoxFit.cover),
-                //       );
-                //     } else {
-                //       return Center(child: Text('Unsupported media type'));
-                //     }
-                //   }
-                // },
               },
             ),
     );
@@ -141,7 +116,7 @@ class _AlbumPageState extends State<AlbumPage> {
   void _openMediaViewer(BuildContext context, int index) {
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (context) => MediaViewerPage(
+        builder: (context) => MediaViewerPage.media_viewer(
           media: _media,
           initialIndex: index,
           onImageDeleted: (asset) {
@@ -152,18 +127,3 @@ class _AlbumPageState extends State<AlbumPage> {
     );
   }
 }
-
-// void _openImagePage(BuildContext context, File file, AssetEntity asset) {
-//   Navigator.of(context).push(
-//     MaterialPageRoute(
-//       builder: (context) => ImagePage(
-//         imageFile: file,
-//         onDelete: () => _removeImage(asset), // Callback for deletion
-//       ),
-//     ),
-//   );
-// }
-//
-// void _openVideoPage(BuildContext context, File file) {
-//   // Implement video page navigation
-// }
