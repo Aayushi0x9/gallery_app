@@ -1,7 +1,5 @@
 import 'dart:typed_data';
-import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:permission_handler/permission_handler.dart';
 import 'package:photo_manager/photo_manager.dart';
 import 'package:gallery_app/Views/AlbumPage/album_page.dart';
 
@@ -17,70 +15,22 @@ class _AlbumsPageState extends State<AlbumsPage> {
   @override
   void initState() {
     super.initState();
-    _requestPermissions();
-  }
-
-  Future<void> _requestPermissions() async {
-    final status = await Permission.photos.request();
-    if (status.isGranted) {
-      print('Permission granted');
-      _loadAlbums();
-    } else {
-      print('Permission denied');
-      setState(() {
-        _isLoading = false;
-      });
-      _showPermissionDialog();
-    }
+    _loadAlbums();
   }
 
   Future<void> _loadAlbums() async {
-    if (await Permission.photos.isGranted) {
-      try {
-        final List<AssetPathEntity> albums =
-            await PhotoManager.getAssetPathList(
-          type: RequestType.image | RequestType.video,
-        );
-        setState(() {
-          _albums = albums;
-          _isLoading = false;
-        });
-      } catch (e) {
-        print('Error loading albums: $e');
-      }
-    } else {
-      print('Permission not granted');
+    try {
+      final List<AssetPathEntity> albums = await PhotoManager.getAssetPathList(
+        type: RequestType.image |
+            RequestType.video, // Request only images and videos
+      );
       setState(() {
+        _albums = albums;
         _isLoading = false;
       });
+    } catch (e) {
+      print('Error loading albums: $e');
     }
-  }
-
-  void _showPermissionDialog() {
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: Text('Permission Required'),
-          content: Text(
-              'This app needs access to your photos and videos to show albums.'),
-          actions: [
-            TextButton(
-              child: Text('Settings'),
-              onPressed: () {
-                openAppSettings();
-              },
-            ),
-            TextButton(
-              child: Text('Cancel'),
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-            ),
-          ],
-        );
-      },
-    );
   }
 
   @override
@@ -113,10 +63,8 @@ class _AlbumsPageState extends State<AlbumsPage> {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (context) => AlbumPage(
-                                album: album,
-                                initialIndex: 0,
-                              ),
+                              builder: (context) =>
+                                  AlbumPage(album: album, initialIndex: 0),
                             ),
                           );
                         },
@@ -134,7 +82,7 @@ class _AlbumsPageState extends State<AlbumsPage> {
                             MaterialPageRoute(
                               builder: (context) => AlbumPage(
                                 album: album,
-                                initialIndex: 0,
+                                initialIndex: 0, // Start from the first media
                               ),
                             ),
                           );
@@ -151,6 +99,7 @@ class _AlbumsPageState extends State<AlbumsPage> {
                             } else {
                               final thumbnail = thumbnailSnapshot.data;
                               return Container(
+                                padding: EdgeInsets.all(5),
                                 decoration: BoxDecoration(
                                   borderRadius: BorderRadius.circular(8),
                                   image: DecorationImage(
@@ -158,6 +107,15 @@ class _AlbumsPageState extends State<AlbumsPage> {
                                     fit: BoxFit.cover,
                                   ),
                                 ),
+                                child: Align(
+                                    alignment: Alignment.bottomLeft,
+                                    child: Text(
+                                      album.name,
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    )),
                               );
                             }
                           },

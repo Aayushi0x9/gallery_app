@@ -11,7 +11,11 @@ class ImagePage extends StatefulWidget {
   final File? imageFile;
   final VoidCallback? onDelete;
 
-  ImagePage({this.image, this.imageFile, this.onDelete});
+  ImagePage({
+    this.image,
+    this.imageFile,
+    this.onDelete,
+  });
 
   @override
   _ImagePageState createState() => _ImagePageState();
@@ -34,9 +38,9 @@ class _ImagePageState extends State<ImagePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text('Image'),
-      ),
+      // appBar: AppBar(
+      //   title: Text('Image'),
+      // ),
       body: GestureDetector(
         onTap: () {
           setState(() {
@@ -57,8 +61,8 @@ class _ImagePageState extends State<ImagePage> {
       bottomNavigationBar: _showBottomNavBar
           ? BottomNavigationBar(
               backgroundColor: Colors.black,
-              unselectedItemColor: Colors.white,
-              selectedItemColor: Colors.amberAccent,
+              unselectedItemColor: Colors.grey,
+              selectedItemColor: Colors.black,
               items: [
                 BottomNavigationBarItem(
                   icon: Icon(Icons.share),

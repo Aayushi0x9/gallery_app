@@ -1,51 +1,90 @@
-import 'dart:typed_data';
+import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:gallery_app/Views/ImagePage/image1_page.dart';
 import 'package:gallery_app/Views/ViodeoPage/video1_page.dart';
 import 'package:photo_manager/photo_manager.dart';
+import 'package:gallery_app/Views/ImagePage/image1_page.dart';
+import 'package:gallery_app/Widget/videoplayer_widget.dart';
 
-class MediaTile extends StatelessWidget {
-  final AssetEntity asset;
+class MediaViewerPage extends StatefulWidget {
+  final List<AssetEntity> media;
+  final int initialIndex;
+  final void Function(AssetEntity) onImageDeleted; // Add this linehis
+  MediaViewerPage({
+    required this.media,
+    required this.initialIndex,
+    required this.onImageDeleted,
+  });
 
-  MediaTile({required this.asset});
+  @override
+  _MediaViewerPageState createState() => _MediaViewerPageState();
+}
+
+class _MediaViewerPageState extends State<MediaViewerPage> {
+  late PageController _pageController;
+  int _currentIndex = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentIndex = widget.initialIndex;
+    _pageController = PageController(initialPage: _currentIndex);
+  }
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<Uint8List?>(
-      future: asset.thumbnailData, // Request a larger thumbnail
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return Center();
-        } else if (snapshot.hasError || !snapshot.hasData) {
-          return Center(child: Text('Error loading image'));
-        } else {
-          final thumbnail = snapshot.data;
-          return GestureDetector(
-            onTap: () async {
-              final file = await asset.file;
-              final mediaType = asset.type;
-              if (mediaType == AssetType.video) {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => VideoPage(file: file!),
-                  ),
-                );
+    final AssetEntity currentAsset = widget.media[_currentIndex];
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(currentAsset.type == AssetType.video ? 'Video' : 'Image'),
+      ),
+      body: PageView.builder(
+        controller: _pageController,
+        itemCount: widget.media.length,
+        onPageChanged: (index) {
+          setState(() {
+            _currentIndex = index;
+          });
+        },
+        itemBuilder: (context, index) {
+          final asset = widget.media[index];
+          return FutureBuilder<File?>(
+            future: asset.file,
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return Center(child: CircularProgressIndicator());
+              } else if (snapshot.hasError || !snapshot.hasData) {
+                return Center(child: Text('Error loading media'));
               } else {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => ImagePage(
-                      imageFile: file!,
-                    ),
-                  ),
-                );
+                final file = snapshot.data!;
+                if (asset.type == AssetType.video) {
+                  return VideoPage(
+                    file: file,
+                    index: index,
+                  );
+                } else {
+                  return ImagePage(
+                    imageFile: file,
+                    onDelete: () {
+                      widget.onImageDeleted(asset); // Call the callback
+                      Navigator.of(context).pop();
+                    },
+                  );
+                }
               }
             },
-            child: Image.memory(thumbnail!, fit: BoxFit.cover),
           );
-        }
-      },
+        },
+      ),
     );
+  }
+
+  void _removeImage(AssetEntity asset) {
+    setState(() {
+      widget.media.remove(asset);
+    });
+    if (widget.media.isEmpty) {
+      Navigator.of(context).pop(); // Close the viewer if no media remains
+    }
   }
 }

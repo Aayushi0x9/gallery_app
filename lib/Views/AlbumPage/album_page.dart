@@ -1,6 +1,8 @@
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:gallery_app/Views/ImagePage/image1_page.dart';
+import 'package:gallery_app/Widget/MediaTile/media_tile.dart';
 import 'package:gallery_app/Widget/videoplayer_widget.dart';
 import 'package:photo_manager/photo_manager.dart';
 
@@ -67,50 +69,83 @@ class _AlbumPageState extends State<AlbumPage> {
               itemCount: _media.length,
               itemBuilder: (context, index) {
                 final asset = _media[index];
-                final type = asset.type; // Determine asset type
+                // final type = asset.type;
+                // Determine asset type
 
-                return FutureBuilder<File?>(
-                  future: asset.file,
+                return FutureBuilder<Uint8List?>(
+                  future:
+                      asset.thumbnailDataWithSize(ThumbnailSize.square(200)),
                   builder: (context, snapshot) {
                     if (snapshot.connectionState == ConnectionState.waiting) {
                       return Center(child: CircularProgressIndicator());
                     } else if (snapshot.hasError || !snapshot.hasData) {
-                      return Center(child: Text('Error loading media'));
+                      return Center(child: Text('Error loading thumbnail'));
                     } else {
-                      final file = snapshot.data;
-                      if (type == AssetType.video && file != null) {
-                        return GestureDetector(
-                          onTap: () => _openVideoPage(context, file),
-                          child: VideoPlayerWidget(file: file),
-                        );
-                      } else if (type == AssetType.image && file != null) {
-                        return GestureDetector(
-                          onTap: () => _openImagePage(context, file, asset),
-                          child: Image.file(file, fit: BoxFit.cover),
-                        );
-                      } else {
-                        return Center(child: Text('Unsupported media type'));
-                      }
+                      final Uint8List? thumbnail = snapshot.data;
+                      return GestureDetector(
+                        onTap: () => _openMediaViewer(context, index),
+                        child: Image.memory(
+                          thumbnail!,
+                          fit: BoxFit.cover,
+                        ),
+                      );
                     }
                   },
                 );
+
+                // {
+                //   if (snapshot.connectionState == ConnectionState.waiting) {
+                //     return Center(child: CircularProgressIndicator());
+                //   } else if (snapshot.hasError || !snapshot.hasData) {
+                //     return Center(child: Text('Error loading media'));
+                //   } else {
+                //     final file = snapshot.data;
+                //     if (type == AssetType.video && file != null) {
+                //       return GestureDetector(
+                //         onTap: () => _openVideoPage(context, file),
+                //         child: VideoPlayerWidget(file: file),
+                //       );
+                //     } else if (type == AssetType.image && file != null) {
+                //       return GestureDetector(
+                //         onTap: () => _openImagePage(context, file, asset),
+                //         child: Image.file(file, fit: BoxFit.cover),
+                //       );
+                //     } else {
+                //       return Center(child: Text('Unsupported media type'));
+                //     }
+                //   }
+                // },
               },
             ),
     );
   }
 
-  void _openImagePage(BuildContext context, File file, AssetEntity asset) {
+  void _openMediaViewer(BuildContext context, int index) {
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (context) => ImagePage(
-          imageFile: file,
-          onDelete: () => _removeImage(asset), // Callback for deletion
+        builder: (context) => MediaViewerPage(
+          media: _media,
+          initialIndex: index,
+          onImageDeleted: (asset) {
+            _removeImage(asset); // Remove the image from the list
+          },
         ),
       ),
     );
   }
-
-  void _openVideoPage(BuildContext context, File file) {
-    // Implement video page navigation
-  }
 }
+
+// void _openImagePage(BuildContext context, File file, AssetEntity asset) {
+//   Navigator.of(context).push(
+//     MaterialPageRoute(
+//       builder: (context) => ImagePage(
+//         imageFile: file,
+//         onDelete: () => _removeImage(asset), // Callback for deletion
+//       ),
+//     ),
+//   );
+// }
+//
+// void _openVideoPage(BuildContext context, File file) {
+//   // Implement video page navigation
+// }
