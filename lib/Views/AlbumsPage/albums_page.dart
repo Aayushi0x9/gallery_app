@@ -11,11 +11,29 @@ class AlbumsPage extends StatefulWidget {
 class _AlbumsPageState extends State<AlbumsPage> {
   List<AssetPathEntity> _albums = [];
   bool _isLoading = true;
+  bool _permissionGranted = false;
 
   @override
   void initState() {
     super.initState();
-    _loadAlbums();
+    _requestPermissionAndLoadAlbums();
+  }
+
+  Future<void> _requestPermissionAndLoadAlbums() async {
+    final PermissionState result = await PhotoManager.requestPermissionExtend();
+    if (result.isAuth) {
+      // Permission is granted
+      _loadAlbums();
+      setState(() {
+        _permissionGranted = true;
+      });
+    } else {
+      // Handle the case when permission is not granted
+      setState(() {
+        _isLoading = false;
+      });
+      // You can show a dialog or a message here to inform the user
+    }
   }
 
   Future<void> _loadAlbums() async {
@@ -40,6 +58,9 @@ class _AlbumsPageState extends State<AlbumsPage> {
       });
     } catch (e) {
       print('Error loading albums: $e');
+      setState(() {
+        _isLoading = false;
+      });
     }
   }
 
@@ -51,94 +72,100 @@ class _AlbumsPageState extends State<AlbumsPage> {
       ),
       body: _isLoading
           ? Center(child: CircularProgressIndicator())
-          : _albums.isEmpty
-              ? Center(child: Text('No albums available'))
-              : GridView.builder(
-                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 3,
-                    crossAxisSpacing: 4,
-                    mainAxisSpacing: 4,
-                  ),
-                  itemCount: _albums.length,
-                  itemBuilder: (context, index) {
-                    final album = _albums[index];
-                    return FutureBuilder<List<AssetEntity>>(
-                      future: album.getAssetListRange(start: 0, end: 1),
-                      builder: (context, snapshot) {
-                        if (snapshot.connectionState ==
-                            ConnectionState.waiting) {
-                          return Center(child: CircularProgressIndicator());
-                        } else if (snapshot.hasError ||
-                            !snapshot.hasData ||
-                            snapshot.data!.isEmpty) {
-                          return Container(); // Should never reach here due to filtering
-                        } else {
-                          final asset = snapshot.data!.first;
-                          return GestureDetector(
-                            onTap: () async {
-                              final int assetCount =
-                                  await album.assetCountAsync;
-                              final List<AssetEntity> media = await album
-                                  .getAssetListRange(start: 0, end: assetCount);
-                              if (media.isNotEmpty) {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => AlbumPage(
-                                      album: album,
-                                      initialIndex: 0,
-                                      onDelete: () {
-                                        setState(() {
-                                          _albums.remove(album);
-                                        });
-                                      },
-                                    ),
-                                  ),
-                                );
-                              }
-                            },
-                            child: FutureBuilder<Uint8List?>(
-                              future: _getThumbnailData(asset),
-                              builder: (context, thumbnailSnapshot) {
-                                if (thumbnailSnapshot.connectionState ==
-                                    ConnectionState.waiting) {
-                                  return Center(
-                                      child: CircularProgressIndicator());
-                                } else if (thumbnailSnapshot.hasError ||
-                                    !thumbnailSnapshot.hasData) {
-                                  return Center(
-                                      child: Text('Error loading image'));
-                                } else {
-                                  final thumbnail = thumbnailSnapshot.data;
-                                  return Container(
-                                    padding: EdgeInsets.all(5),
-                                    decoration: BoxDecoration(
-                                      borderRadius: BorderRadius.circular(8),
-                                      image: DecorationImage(
-                                        image: MemoryImage(thumbnail!),
-                                        fit: BoxFit.cover,
-                                      ),
-                                    ),
-                                    child: Align(
-                                      alignment: Alignment.bottomLeft,
-                                      child: Text(
-                                        album.name,
-                                        style: TextStyle(
-                                          color: Colors.white,
-                                          fontWeight: FontWeight.bold,
+          : !_permissionGranted
+              ? Center(
+                  child: Text(
+                      'Permission denied. Please enable access to photos and videos in settings.'))
+              : _albums.isEmpty
+                  ? Center(child: Text('No albums available'))
+                  : GridView.builder(
+                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 3,
+                        crossAxisSpacing: 4,
+                        mainAxisSpacing: 4,
+                      ),
+                      itemCount: _albums.length,
+                      itemBuilder: (context, index) {
+                        final album = _albums[index];
+                        return FutureBuilder<List<AssetEntity>>(
+                          future: album.getAssetListRange(start: 0, end: 1),
+                          builder: (context, snapshot) {
+                            if (snapshot.connectionState ==
+                                ConnectionState.waiting) {
+                              return Center(child: CircularProgressIndicator());
+                            } else if (snapshot.hasError ||
+                                !snapshot.hasData ||
+                                snapshot.data!.isEmpty) {
+                              return Container(); // Should never reach here due to filtering
+                            } else {
+                              final asset = snapshot.data!.first;
+                              return GestureDetector(
+                                onTap: () async {
+                                  final int assetCount =
+                                      await album.assetCountAsync;
+                                  final List<AssetEntity> media =
+                                      await album.getAssetListRange(
+                                          start: 0, end: assetCount);
+                                  if (media.isNotEmpty) {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) => AlbumPage(
+                                          album: album,
+                                          initialIndex: 0,
+                                          onDelete: () {
+                                            setState(() {
+                                              _albums.remove(album);
+                                            });
+                                          },
                                         ),
                                       ),
-                                    ),
-                                  );
-                                }
-                              },
-                            ),
-                          );
-                        }
+                                    );
+                                  }
+                                },
+                                child: FutureBuilder<Uint8List?>(
+                                  future: _getThumbnailData(asset),
+                                  builder: (context, thumbnailSnapshot) {
+                                    if (thumbnailSnapshot.connectionState ==
+                                        ConnectionState.waiting) {
+                                      return Center(
+                                          child: CircularProgressIndicator());
+                                    } else if (thumbnailSnapshot.hasError ||
+                                        !thumbnailSnapshot.hasData) {
+                                      return Center(
+                                          child: Text('Error loading image'));
+                                    } else {
+                                      final thumbnail = thumbnailSnapshot.data;
+                                      return Container(
+                                        padding: EdgeInsets.all(5),
+                                        decoration: BoxDecoration(
+                                          borderRadius:
+                                              BorderRadius.circular(8),
+                                          image: DecorationImage(
+                                            image: MemoryImage(thumbnail!),
+                                            fit: BoxFit.cover,
+                                          ),
+                                        ),
+                                        child: Align(
+                                          alignment: Alignment.bottomLeft,
+                                          child: Text(
+                                            album.name,
+                                            style: TextStyle(
+                                              color: Colors.white,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                        ),
+                                      );
+                                    }
+                                  },
+                                ),
+                              );
+                            }
+                          },
+                        );
                       },
-                    );
-                  },
-                ),
+                    ),
     );
   }
 
