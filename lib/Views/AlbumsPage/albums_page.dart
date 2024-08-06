@@ -14,6 +14,7 @@ class _AlbumsPageState extends State<AlbumsPage> {
   bool _isLoading = true;
   bool _permissionGranted = false;
   bool _isSearching = false;
+  bool _isGridView = true; // State variable for view type
   TextEditingController _searchController = TextEditingController();
 
   @override
@@ -118,8 +119,16 @@ class _AlbumsPageState extends State<AlbumsPage> {
                 });
               },
             ),
+          IconButton(
+            icon: Icon(_isGridView ? Icons.grid_view : Icons.list),
+            onPressed: () {
+              setState(() {
+                _isGridView = !_isGridView;
+              });
+            },
+          ),
           SizedBox(
-            width: 10,
+            width: 16,
           )
         ],
       ),
@@ -131,96 +140,170 @@ class _AlbumsPageState extends State<AlbumsPage> {
                       'Permission denied. Please enable access to photos and videos in settings.'))
               : _filteredAlbums.isEmpty
                   ? const Center(child: Text('No albums available'))
-                  : GridView.builder(
-                      gridDelegate:
-                          const SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 3,
-                        crossAxisSpacing: 4,
-                        mainAxisSpacing: 4,
-                      ),
-                      itemCount: _filteredAlbums.length,
-                      itemBuilder: (context, index) {
-                        final album = _filteredAlbums[index];
-                        return FutureBuilder<List<AssetEntity>>(
-                          future: album.getAssetListRange(start: 0, end: 1),
-                          builder: (context, snapshot) {
-                            if (snapshot.connectionState ==
-                                ConnectionState.waiting) {
-                              return const Center();
-                            } else if (snapshot.hasError ||
-                                !snapshot.hasData ||
-                                snapshot.data!.isEmpty) {
-                              return Container();
-                            } else {
-                              final asset = snapshot.data!.first;
-                              return GestureDetector(
-                                onTap: () async {
-                                  final int assetCount =
-                                      await album.assetCountAsync;
-                                  final List<AssetEntity> media =
-                                      await album.getAssetListRange(
-                                          start: 0, end: assetCount);
-                                  if (media.isNotEmpty) {
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (context) => AlbumPage(
-                                          album: album,
-                                          initialIndex: 0,
-                                          onDelete: () {
-                                            setState(() {
-                                              _albums.remove(album);
-                                              _filterAlbums(
-                                                  _searchController.text);
-                                            });
-                                          },
-                                        ),
-                                      ),
-                                    );
-                                  }
-                                },
-                                child: FutureBuilder<Uint8List?>(
-                                  future: _getThumbnailData(asset),
-                                  builder: (context, thumbnailSnapshot) {
-                                    if (thumbnailSnapshot.connectionState ==
-                                        ConnectionState.waiting) {
-                                      return const Center();
-                                    } else if (thumbnailSnapshot.hasError ||
-                                        !thumbnailSnapshot.hasData) {
-                                      return const Center(
-                                          child: Text('Error loading image'));
-                                    } else {
-                                      final thumbnail = thumbnailSnapshot.data;
-                                      return Container(
-                                        padding: const EdgeInsets.all(5),
-                                        decoration: BoxDecoration(
-                                          borderRadius:
-                                              BorderRadius.circular(8),
-                                          image: DecorationImage(
-                                            image: MemoryImage(thumbnail!),
-                                            fit: BoxFit.cover,
-                                          ),
-                                        ),
-                                        child: Align(
-                                          alignment: Alignment.bottomLeft,
-                                          child: Text(
-                                            album.name,
-                                            style: const TextStyle(
-                                              color: Colors.white,
-                                              fontWeight: FontWeight.bold,
+                  : _isGridView
+                      ? GridView.builder(
+                          gridDelegate:
+                              const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 3,
+                            crossAxisSpacing: 4,
+                            mainAxisSpacing: 4,
+                          ),
+                          itemCount: _filteredAlbums.length,
+                          itemBuilder: (context, index) {
+                            final album = _filteredAlbums[index];
+                            return FutureBuilder<List<AssetEntity>>(
+                              future: album.getAssetListRange(start: 0, end: 1),
+                              builder: (context, snapshot) {
+                                if (snapshot.connectionState ==
+                                    ConnectionState.waiting) {
+                                  return const Center();
+                                } else if (snapshot.hasError ||
+                                    !snapshot.hasData ||
+                                    snapshot.data!.isEmpty) {
+                                  return Container();
+                                } else {
+                                  final asset = snapshot.data!.first;
+                                  return GestureDetector(
+                                    onTap: () async {
+                                      final int assetCount =
+                                          await album.assetCountAsync;
+                                      final List<AssetEntity> media =
+                                          await album.getAssetListRange(
+                                              start: 0, end: assetCount);
+                                      if (media.isNotEmpty) {
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (context) => AlbumPage(
+                                              album: album,
+                                              initialIndex: 0,
+                                              onDelete: () {
+                                                setState(() {
+                                                  _albums.remove(album);
+                                                  _filterAlbums(
+                                                      _searchController.text);
+                                                });
+                                              },
                                             ),
                                           ),
-                                        ),
-                                      );
-                                    }
-                                  },
-                                ),
-                              );
-                            }
+                                        );
+                                      }
+                                    },
+                                    child: FutureBuilder<Uint8List?>(
+                                      future: _getThumbnailData(asset),
+                                      builder: (context, thumbnailSnapshot) {
+                                        if (thumbnailSnapshot.connectionState ==
+                                            ConnectionState.waiting) {
+                                          return const Center(
+                                              child:
+                                                  CircularProgressIndicator());
+                                        } else if (thumbnailSnapshot.hasError ||
+                                            !thumbnailSnapshot.hasData) {
+                                          return const Center(
+                                              child:
+                                                  Text('Error loading image'));
+                                        } else {
+                                          final thumbnail =
+                                              thumbnailSnapshot.data;
+                                          return Container(
+                                            padding: const EdgeInsets.all(5),
+                                            decoration: BoxDecoration(
+                                              borderRadius:
+                                                  BorderRadius.circular(8),
+                                              image: DecorationImage(
+                                                image: MemoryImage(thumbnail!),
+                                                fit: BoxFit.cover,
+                                              ),
+                                            ),
+                                            child: Align(
+                                              alignment: Alignment.bottomLeft,
+                                              child: Text(
+                                                album.name,
+                                                style: const TextStyle(
+                                                  color: Colors.white,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                            ),
+                                          );
+                                        }
+                                      },
+                                    ),
+                                  );
+                                }
+                              },
+                            );
                           },
-                        );
-                      },
-                    ),
+                        )
+                      : ListView.builder(
+                          itemCount: _filteredAlbums.length,
+                          itemBuilder: (context, index) {
+                            final album = _filteredAlbums[index];
+                            return FutureBuilder<List<AssetEntity>>(
+                              future: album.getAssetListRange(start: 0, end: 1),
+                              builder: (context, snapshot) {
+                                if (snapshot.connectionState ==
+                                    ConnectionState.waiting) {
+                                  return const Center();
+                                } else if (snapshot.hasError ||
+                                    !snapshot.hasData ||
+                                    snapshot.data!.isEmpty) {
+                                  return Container();
+                                } else {
+                                  final asset = snapshot.data!.first;
+                                  return ListTile(
+                                    onTap: () async {
+                                      final int assetCount =
+                                          await album.assetCountAsync;
+                                      final List<AssetEntity> media =
+                                          await album.getAssetListRange(
+                                              start: 0, end: assetCount);
+                                      if (media.isNotEmpty) {
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (context) => AlbumPage(
+                                              album: album,
+                                              initialIndex: 0,
+                                              onDelete: () {
+                                                setState(() {
+                                                  _albums.remove(album);
+                                                  _filterAlbums(
+                                                      _searchController.text);
+                                                });
+                                              },
+                                            ),
+                                          ),
+                                        );
+                                      }
+                                    },
+                                    contentPadding: const EdgeInsets.all(8.0),
+                                    leading: FutureBuilder<Uint8List?>(
+                                      future: _getThumbnailData(asset),
+                                      builder: (context, thumbnailSnapshot) {
+                                        if (thumbnailSnapshot.connectionState ==
+                                            ConnectionState.waiting) {
+                                          return const CircularProgressIndicator();
+                                        } else if (thumbnailSnapshot.hasError ||
+                                            !thumbnailSnapshot.hasData) {
+                                          return const Icon(Icons.error);
+                                        } else {
+                                          return Image.memory(
+                                            thumbnailSnapshot.data!,
+                                            fit: BoxFit.cover,
+                                            width: 100,
+                                            height: 70,
+                                          );
+                                        }
+                                      },
+                                    ),
+                                    title: Text(album.name),
+                                  );
+                                }
+                              },
+                            );
+                          },
+                        ),
     );
   }
 
