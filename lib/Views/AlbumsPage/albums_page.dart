@@ -2,6 +2,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:gallery_app/Views/AlbumPage/album_page.dart';
 import 'package:photo_manager/photo_manager.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 class AlbumsPage extends StatefulWidget {
   @override
@@ -26,17 +27,41 @@ class _AlbumsPageState extends State<AlbumsPage> {
     });
   }
 
+  // Future<void> _requestPermissionAndLoadAlbums() async {
+  //   final PermissionState result = await PhotoManager.requestPermissionExtend();
+  //   if (result.isAuth) {
+  //     _loadAlbums();
+  //     setState(() {
+  //       _permissionGranted = true;
+  //     });
+  //   } else {
+  //     setState(() {
+  //       _isLoading = false;
+  //     });
+  //   }
+  // }
   Future<void> _requestPermissionAndLoadAlbums() async {
-    final PermissionState result = await PhotoManager.requestPermissionExtend();
-    if (result.isAuth) {
+    final PermissionStatus storagePermission = await Permission.storage.status;
+    final PermissionStatus manageStoragePermission =
+        await Permission.manageExternalStorage.status;
+
+    if (storagePermission.isGranted || manageStoragePermission.isGranted) {
       _loadAlbums();
       setState(() {
         _permissionGranted = true;
       });
     } else {
-      setState(() {
-        _isLoading = false;
-      });
+      final result = await PhotoManager.requestPermissionExtend();
+      if (result.isAuth) {
+        _loadAlbums();
+        setState(() {
+          _permissionGranted = true;
+        });
+      } else {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 

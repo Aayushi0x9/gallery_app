@@ -1,6 +1,24 @@
 import 'package:permission_handler/permission_handler.dart';
 
 Future<void> requestPermissions() async {
-  final status = await Permission.photos.request();
-  if (!status.isGranted) {}
+  if (await Permission.photos.isGranted) {
+    // Permission already granted
+    return;
+  }
+
+  if (await Permission.photos.request().isGranted) {
+    // Permission granted after request
+    return;
+  }
+
+  if (await Permission.manageExternalStorage.request().isGranted) {
+    // Manage external storage permission granted
+    return;
+  }
+
+  // If the user denied the permission, you can guide them to the app settings:
+  if (await Permission.photos.isPermanentlyDenied ||
+      await Permission.manageExternalStorage.isPermanentlyDenied) {
+    openAppSettings();
+  }
 }
