@@ -1,4 +1,5 @@
 import 'dart:typed_data';
+import 'package:draggable_scrollbar/draggable_scrollbar.dart';
 import 'package:flutter/material.dart';
 import 'package:gallery_app/Views/AlbumPage/album_page.dart';
 import 'package:photo_manager/photo_manager.dart';
@@ -181,7 +182,8 @@ class _AlbumsPageState extends State<AlbumsPage> {
                       'Permission denied. Please enable access to photos and videos in settings.'))
               : _filteredAlbums.isEmpty
                   ? const Center(child: Text('No albums available'))
-                  : Scrollbar(
+                  : DraggableScrollbar.arrows(
+                      backgroundColor: Colors.grey,
                       controller: _scrollController,
                       child: _isGridView
                           ? GridView.builder(
