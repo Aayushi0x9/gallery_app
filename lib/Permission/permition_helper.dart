@@ -1,6 +1,7 @@
 import 'package:permission_handler/permission_handler.dart';
 
 Future<void> requestPermissions() async {
+  // For Android 13+
   if (await Permission.photos.isGranted) {
     // Permission already granted
     return;
@@ -10,7 +11,7 @@ Future<void> requestPermissions() async {
     // Permission granted after request
     return;
   }
-
+// For Android 11+
   if (await Permission.manageExternalStorage.request().isGranted) {
     // Manage external storage permission granted
     return;
