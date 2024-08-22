@@ -79,6 +79,20 @@ class _AlbumsPageState extends State<AlbumsPage> {
           nonEmptyAlbums.add(album);
         }
       }
+      // Separate the most recent album from the rest
+      AssetPathEntity? recentAlbum;
+      if (nonEmptyAlbums.isNotEmpty) {
+        recentAlbum = nonEmptyAlbums.removeAt(0); // Assume first is most recent
+      }
+
+      // Sort the remaining albums alphabetically by name
+      nonEmptyAlbums
+          .sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+
+      // Add the recent album back to the top of the list
+      if (recentAlbum != null) {
+        nonEmptyAlbums.insert(0, recentAlbum);
+      }
 
       setState(() {
         _albums = nonEmptyAlbums;
@@ -152,7 +166,7 @@ class _AlbumsPageState extends State<AlbumsPage> {
               });
             },
           ),
-          SizedBox(
+          const SizedBox(
             width: 16,
           )
         ],
