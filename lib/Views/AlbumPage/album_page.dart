@@ -1,4 +1,5 @@
 import 'dart:typed_data';
+import 'package:draggable_scrollbar/draggable_scrollbar.dart';
 import 'package:flutter/material.dart';
 import 'package:gallery_app/Widget/MediaViewerpage/media_tile.dart';
 import 'package:photo_manager/photo_manager.dart';
@@ -16,6 +17,7 @@ class AlbumPage extends StatefulWidget {
 class _AlbumPageState extends State<AlbumPage> {
   List<AssetEntity> _media = [];
   bool _isLoading = true;
+  final ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
@@ -68,6 +70,12 @@ class _AlbumPageState extends State<AlbumPage> {
   }
 
   @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
@@ -75,40 +83,41 @@ class _AlbumPageState extends State<AlbumPage> {
       ),
       body: _isLoading
           ? const Center()
-          : GridView.builder(
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 3,
-                crossAxisSpacing: 4.0,
-                mainAxisSpacing: 4.0,
+          : DraggableScrollbar.semicircle(
+              controller: _scrollController,
+              child: GridView.builder(
+                controller: _scrollController,
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 3,
+                  crossAxisSpacing: 4.0,
+                  mainAxisSpacing: 4.0,
+                ),
+                itemCount: _media.length,
+                itemBuilder: (context, index) {
+                  final asset = _media[index];
+                  return FutureBuilder<Uint8List?>(
+                    future: asset
+                        .thumbnailDataWithSize(const ThumbnailSize.square(200)),
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const Center();
+                      } else if (snapshot.hasError || !snapshot.hasData) {
+                        return const Center(
+                            child: Text('Error loading thumbnail'));
+                      } else {
+                        final Uint8List? thumbnail = snapshot.data;
+                        return GestureDetector(
+                          onTap: () => _openMediaViewer(context, index),
+                          child: Image.memory(
+                            thumbnail!,
+                            fit: BoxFit.cover,
+                          ),
+                        );
+                      }
+                    },
+                  );
+                },
               ),
-              itemCount: _media.length,
-              itemBuilder: (context, index) {
-                final asset = _media[index];
-                // final type = asset.type;
-                // Determine asset type
-
-                return FutureBuilder<Uint8List?>(
-                  future: asset
-                      .thumbnailDataWithSize(const ThumbnailSize.square(200)),
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      return const Center();
-                    } else if (snapshot.hasError || !snapshot.hasData) {
-                      return const Center(
-                          child: Text('Error loading thumbnail'));
-                    } else {
-                      final Uint8List? thumbnail = snapshot.data;
-                      return GestureDetector(
-                        onTap: () => _openMediaViewer(context, index),
-                        child: Image.memory(
-                          thumbnail!,
-                          fit: BoxFit.cover,
-                        ),
-                      );
-                    }
-                  },
-                );
-              },
             ),
     );
   }

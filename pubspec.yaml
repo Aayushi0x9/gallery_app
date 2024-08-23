@@ -43,6 +43,7 @@ dependencies:
   image: ^4.2.0
   path_provider: ^2.1.4
   draggable_scrollbar: ^0.1.0
+  scrollable_positioned_list: ^0.3.8
 
 dev_dependencies:
   flutter_test:

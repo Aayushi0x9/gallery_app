@@ -18,30 +18,35 @@ class _AlbumsPageState extends State<AlbumsPage> {
   bool _isSearching = false;
   bool _isGridView = true; // State variable for view type
   TextEditingController _searchController = TextEditingController();
-  final ScrollController _scrollController = ScrollController();
+  final ScrollController _listscrollController = ScrollController();
+  final ScrollController _gridscrollController = ScrollController();
 
   @override
   void initState() {
     super.initState();
+
     _requestPermissionAndLoadAlbums();
+
     _searchController.addListener(() {
       _filterAlbums(_searchController.text);
     });
+
+    // Add scroll listeners inside a post frame callback to ensure layout is complete
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _listscrollController.addListener(() {
+        print('ListView Scroll Position: ${_listscrollController.position}');
+        print(
+            'Max Scroll Extent: ${_listscrollController.position.maxScrollExtent}');
+      });
+
+      _gridscrollController.addListener(() {
+        print('GridView Scroll Position: ${_gridscrollController.position}');
+        print(
+            'Max Scroll Extent: ${_gridscrollController.position.maxScrollExtent}');
+      });
+    });
   }
 
-  // Future<void> _requestPermissionAndLoadAlbums() async {
-  //   final PermissionState result = await PhotoManager.requestPermissionExtend();
-  //   if (result.isAuth) {
-  //     _loadAlbums();
-  //     setState(() {
-  //       _permissionGranted = true;
-  //     });
-  //   } else {
-  //     setState(() {
-  //       _isLoading = false;
-  //     });
-  //   }
-  // }
   Future<void> _requestPermissionAndLoadAlbums() async {
     final PermissionStatus storagePermission = await Permission.storage.status;
     final PermissionStatus manageStoragePermission =
@@ -81,17 +86,15 @@ class _AlbumsPageState extends State<AlbumsPage> {
           nonEmptyAlbums.add(album);
         }
       }
-      // Separate the most recent album from the rest
+
       AssetPathEntity? recentAlbum;
       if (nonEmptyAlbums.isNotEmpty) {
-        recentAlbum = nonEmptyAlbums.removeAt(0); // Assume first is most recent
+        recentAlbum = nonEmptyAlbums.removeAt(0);
       }
 
-      // Sort the remaining albums alphabetically by name
       nonEmptyAlbums
           .sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
 
-      // Add the recent album back to the top of the list
       if (recentAlbum != null) {
         nonEmptyAlbums.insert(0, recentAlbum);
       }
@@ -109,6 +112,16 @@ class _AlbumsPageState extends State<AlbumsPage> {
     }
   }
 
+  void _resetScrollPositions() {
+    // Reset scroll positions when switching views
+    if (_listscrollController.hasClients) {
+      _listscrollController.jumpTo(0);
+    }
+    if (_gridscrollController.hasClients) {
+      _gridscrollController.jumpTo(0);
+    }
+  }
+
   void _filterAlbums(String query) {
     final filteredAlbums = _albums.where((album) {
       return album.name.toLowerCase().contains(query.toLowerCase());
@@ -122,12 +135,14 @@ class _AlbumsPageState extends State<AlbumsPage> {
   @override
   void dispose() {
     _searchController.dispose();
-    _scrollController.dispose();
+    _listscrollController.dispose();
+    _gridscrollController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    Size size = MediaQuery.sizeOf(context);
     return Scaffold(
       appBar: AppBar(
         title: _isSearching
@@ -166,6 +181,7 @@ class _AlbumsPageState extends State<AlbumsPage> {
             onPressed: () {
               setState(() {
                 _isGridView = !_isGridView;
+                _resetScrollPositions();
               });
             },
           ),
@@ -175,210 +191,239 @@ class _AlbumsPageState extends State<AlbumsPage> {
         ],
       ),
       body: _isLoading
-          ? const Center()
+          ? const Center(child: CircularProgressIndicator())
           : !_permissionGranted
               ? const Center(
                   child: Text(
                       'Permission denied. Please enable access to photos and videos in settings.'))
               : _filteredAlbums.isEmpty
                   ? const Center(child: Text('No albums available'))
-                  : DraggableScrollbar.arrows(
-                      backgroundColor: Colors.grey,
-                      controller: _scrollController,
-                      child: _isGridView
-                          ? GridView.builder(
-                              controller: _scrollController,
-                              gridDelegate:
-                                  const SliverGridDelegateWithFixedCrossAxisCount(
-                                crossAxisCount: 3,
-                                crossAxisSpacing: 4,
-                                mainAxisSpacing: 4,
-                              ),
-                              itemCount: _filteredAlbums.length,
-                              itemBuilder: (context, index) {
-                                final album = _filteredAlbums[index];
-                                return FutureBuilder<List<AssetEntity>>(
-                                  future:
-                                      album.getAssetListRange(start: 0, end: 1),
-                                  builder: (context, snapshot) {
-                                    if (snapshot.connectionState ==
-                                        ConnectionState.waiting) {
-                                      return const Center();
-                                    } else if (snapshot.hasError ||
-                                        !snapshot.hasData ||
-                                        snapshot.data!.isEmpty) {
-                                      return Container();
-                                    } else {
-                                      final asset = snapshot.data!.first;
-                                      return GestureDetector(
-                                        onTap: () async {
-                                          final int assetCount =
-                                              await album.assetCountAsync;
-                                          final List<AssetEntity> media =
-                                              await album.getAssetListRange(
-                                                  start: 0, end: assetCount);
-                                          if (media.isNotEmpty) {
-                                            Navigator.push(
-                                              context,
-                                              MaterialPageRoute(
-                                                builder: (context) => AlbumPage(
-                                                  album: album,
-                                                  initialIndex: 0,
-                                                  onDelete: () {
-                                                    setState(() {
-                                                      _albums.remove(album);
-                                                      _filterAlbums(
-                                                          _searchController
-                                                              .text);
-                                                    });
-                                                  },
-                                                ),
-                                              ),
-                                            );
-                                          }
-                                        },
-                                        child: FutureBuilder<Uint8List?>(
-                                          future: _getThumbnailData(asset),
-                                          builder:
-                                              (context, thumbnailSnapshot) {
-                                            if (thumbnailSnapshot
-                                                    .connectionState ==
-                                                ConnectionState.waiting) {
-                                              return const Center(
-                                                  child:
-                                                      CircularProgressIndicator());
-                                            } else if (thumbnailSnapshot
-                                                    .hasError ||
-                                                !thumbnailSnapshot.hasData) {
-                                              return const Center(
-                                                  child: Text(
-                                                      'Error loading image'));
-                                            } else {
-                                              final thumbnail =
-                                                  thumbnailSnapshot.data;
-                                              return Container(
-                                                padding:
-                                                    const EdgeInsets.all(5),
-                                                decoration: BoxDecoration(
-                                                  borderRadius:
-                                                      BorderRadius.circular(8),
-                                                  image: DecorationImage(
-                                                    image:
-                                                        MemoryImage(thumbnail!),
-                                                    fit: BoxFit.cover,
-                                                  ),
-                                                ),
-                                                child: Align(
-                                                  alignment:
-                                                      Alignment.bottomLeft,
-                                                  child: Text(
-                                                    album.name,
-                                                    style: const TextStyle(
-                                                      color: Colors.white,
-                                                      fontWeight:
-                                                          FontWeight.bold,
-                                                    ),
-                                                  ),
-                                                ),
-                                              );
-                                            }
-                                          },
-                                        ),
-                                      );
-                                    }
-                                  },
-                                );
-                              },
-                            )
-                          : ListView.builder(
-                              controller: _scrollController,
-                              itemCount: _filteredAlbums.length,
-                              itemBuilder: (context, index) {
-                                final album = _filteredAlbums[index];
-                                return FutureBuilder<List<AssetEntity>>(
-                                  future:
-                                      album.getAssetListRange(start: 0, end: 1),
-                                  builder: (context, snapshot) {
-                                    if (snapshot.connectionState ==
-                                        ConnectionState.waiting) {
-                                      return const Center();
-                                    } else if (snapshot.hasError ||
-                                        !snapshot.hasData ||
-                                        snapshot.data!.isEmpty) {
-                                      return Container();
-                                    } else {
-                                      final asset = snapshot.data!.first;
-                                      return ListTile(
-                                        onTap: () async {
-                                          final int assetCount =
-                                              await album.assetCountAsync;
-                                          final List<AssetEntity> media =
-                                              await album.getAssetListRange(
-                                                  start: 0, end: assetCount);
-                                          if (media.isNotEmpty) {
-                                            Navigator.push(
-                                              context,
-                                              MaterialPageRoute(
-                                                builder: (context) => AlbumPage(
-                                                  album: album,
-                                                  initialIndex: 0,
-                                                  onDelete: () {
-                                                    setState(() {
-                                                      _albums.remove(album);
-                                                      _filterAlbums(
-                                                          _searchController
-                                                              .text);
-                                                    });
-                                                  },
-                                                ),
-                                              ),
-                                            );
-                                          }
-                                        },
-                                        contentPadding:
-                                            const EdgeInsets.all(8.0),
-                                        leading: FutureBuilder<Uint8List?>(
-                                          future: _getThumbnailData(asset),
-                                          builder:
-                                              (context, thumbnailSnapshot) {
-                                            if (thumbnailSnapshot
-                                                    .connectionState ==
-                                                ConnectionState.waiting) {
-                                              return const CircularProgressIndicator();
-                                            } else if (thumbnailSnapshot
-                                                    .hasError ||
-                                                !thumbnailSnapshot.hasData) {
-                                              return const Icon(Icons.error);
-                                            } else {
-                                              return Image.memory(
-                                                thumbnailSnapshot.data!,
-                                                fit: BoxFit.cover,
-                                                width: 100,
-                                                height: 70,
-                                              );
-                                            }
-                                          },
-                                        ),
-                                        title: Text(album.name),
-                                      );
-                                    }
-                                  },
-                                );
-                              },
+                  : _isGridView
+                      ? DraggableScrollbar.semicircle(
+                          controller: _gridscrollController,
+                          child: GridView.builder(
+                            controller: _gridscrollController,
+                            gridDelegate:
+                                const SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: 3,
+                              crossAxisSpacing: 4,
+                              mainAxisSpacing: 4,
                             ),
-                    ),
+                            itemCount: _filteredAlbums.length,
+                            itemBuilder: (context, index) {
+                              final album = _filteredAlbums[index];
+                              return FutureBuilder<List<AssetEntity>>(
+                                future:
+                                    album.getAssetListRange(start: 0, end: 1),
+                                builder: (context, snapshot) {
+                                  if (snapshot.connectionState ==
+                                      ConnectionState.waiting) {
+                                    return const Center();
+                                  } else if (snapshot.hasError ||
+                                      !snapshot.hasData ||
+                                      snapshot.data!.isEmpty) {
+                                    return Container();
+                                  } else {
+                                    final asset = snapshot.data!.first;
+                                    return GestureDetector(
+                                      onTap: () async {
+                                        final int assetCount =
+                                            await album.assetCountAsync;
+                                        final List<AssetEntity> media =
+                                            await album.getAssetListRange(
+                                                start: 0, end: assetCount);
+                                        if (media.isNotEmpty) {
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (context) => AlbumPage(
+                                                album: album,
+                                                initialIndex: 0,
+                                                onDelete: () {
+                                                  setState(() {
+                                                    _albums.remove(album);
+                                                    _filterAlbums(
+                                                        _searchController.text);
+                                                  });
+                                                },
+                                              ),
+                                            ),
+                                          );
+                                        }
+                                      },
+                                      child: FutureBuilder<Uint8List?>(
+                                        future: _getThumbnailData(asset),
+                                        builder: (context, thumbnailSnapshot) {
+                                          if (thumbnailSnapshot
+                                                  .connectionState ==
+                                              ConnectionState.waiting) {
+                                            return const Center(
+                                                child:
+                                                    CircularProgressIndicator());
+                                          } else if (thumbnailSnapshot
+                                                  .hasError ||
+                                              !thumbnailSnapshot.hasData) {
+                                            return const Center(
+                                                child: Text(
+                                                    'Error loading image'));
+                                          } else {
+                                            final thumbnail =
+                                                thumbnailSnapshot.data;
+                                            return Container(
+                                              padding: const EdgeInsets.all(5),
+                                              decoration: BoxDecoration(
+                                                borderRadius:
+                                                    BorderRadius.circular(8),
+                                                image: DecorationImage(
+                                                  image:
+                                                      MemoryImage(thumbnail!),
+                                                  fit: BoxFit.cover,
+                                                ),
+                                              ),
+                                              child: Align(
+                                                alignment: Alignment.bottomLeft,
+                                                child: Text(
+                                                  album.name,
+                                                  style: const TextStyle(
+                                                    color: Colors.white,
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                                ),
+                                              ),
+                                            );
+                                          }
+                                        },
+                                      ),
+                                    );
+                                  }
+                                },
+                              );
+                            },
+                          ),
+                        )
+                      : DraggableScrollbar.semicircle(
+                          controller: _listscrollController,
+                          child: ListView.builder(
+                            controller: _listscrollController,
+                            itemCount: _filteredAlbums.length,
+                            itemBuilder: (context, index) {
+                              final album = _filteredAlbums[index];
+                              return GestureDetector(
+                                onTap: () async {
+                                  final int assetCount =
+                                      await album.assetCountAsync;
+                                  final List<AssetEntity> media =
+                                      await album.getAssetListRange(
+                                          start: 0, end: assetCount);
+                                  if (media.isNotEmpty) {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) => AlbumPage(
+                                          album: album,
+                                          initialIndex: 0,
+                                          onDelete: () {
+                                            setState(() {
+                                              _albums.remove(album);
+                                              _filterAlbums(
+                                                  _searchController.text);
+                                            });
+                                          },
+                                        ),
+                                      ),
+                                    );
+                                  }
+                                },
+                                child: Container(
+                                  margin: const EdgeInsets.symmetric(
+                                      vertical: 8.0, horizontal: 16.0),
+                                  child: Row(
+                                    children: [
+                                      // Image
+                                      SizedBox(
+                                        width: size.height *
+                                            0.15, // Adjust width as needed
+                                        height: size.height *
+                                            0.08, // Adjust height as needed
+                                        child: FutureBuilder<List<AssetEntity>>(
+                                          future: album.getAssetListRange(
+                                              start: 0, end: 1),
+                                          builder: (context, snapshot) {
+                                            if (snapshot.connectionState ==
+                                                ConnectionState.waiting) {
+                                              return const SizedBox(); // Show a placeholder or an empty widget while loading
+                                            } else if (snapshot.hasError ||
+                                                !snapshot.hasData ||
+                                                snapshot.data!.isEmpty) {
+                                              return const SizedBox(); // Show an empty widget in case of error or no data
+                                            } else {
+                                              final asset =
+                                                  snapshot.data!.first;
+                                              return FutureBuilder<Uint8List?>(
+                                                future:
+                                                    _getThumbnailData(asset),
+                                                builder: (context,
+                                                    thumbnailSnapshot) {
+                                                  if (thumbnailSnapshot
+                                                          .connectionState ==
+                                                      ConnectionState.waiting) {
+                                                    return const SizedBox(); // Show a placeholder or an empty widget while loading
+                                                  } else if (thumbnailSnapshot
+                                                          .hasError ||
+                                                      !thumbnailSnapshot
+                                                          .hasData) {
+                                                    return const SizedBox(); // Show an empty widget in case of error or no data
+                                                  } else {
+                                                    final thumbnail =
+                                                        thumbnailSnapshot.data;
+                                                    return Container(
+                                                      height: size.height *
+                                                          0.3, // Ensure this matches the height of the SizedBox
+                                                      decoration: BoxDecoration(
+                                                        borderRadius:
+                                                            BorderRadius
+                                                                .circular(8),
+                                                        image: DecorationImage(
+                                                          image: MemoryImage(
+                                                              thumbnail!),
+                                                          fit: BoxFit.cover,
+                                                        ),
+                                                      ),
+                                                    );
+                                                  }
+                                                },
+                                              );
+                                            }
+                                          },
+                                        ),
+                                      ),
+                                      const SizedBox(
+                                          width:
+                                              16.0), // Space between image and text
+                                      // Album Name
+                                      Expanded(
+                                        child: Text(
+                                          album.name,
+                                          style: const TextStyle(
+                                            fontSize:
+                                                16.0, // Adjust font size as needed
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            },
+                          )),
     );
   }
 
   Future<Uint8List?> _getThumbnailData(AssetEntity asset) async {
-    try {
-      return await asset.thumbnailDataWithSize(
-        const ThumbnailSize.square(200),
-        format: ThumbnailFormat.jpeg,
-      );
-    } catch (e) {
-      print('Error getting thumbnail: $e');
-      return null;
-    }
+    return asset.thumbnailDataWithSize(
+      const ThumbnailSize.square(100),
+      quality: 80,
+    );
   }
 }
