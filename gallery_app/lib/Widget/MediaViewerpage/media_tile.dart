@@ -43,7 +43,7 @@ class _MediaViewerPageState extends State<MediaViewerPage> {
 
   Future<void> loadMedia() async {
     // You might want to get the media from the provider
-    Provider.of<AlbumController>(context).loadedAssets;
+    // Provider.of<AlbumController>(context).loadedAssets;
     // Provider.of<AlbumController>(context).loadMedia();
     await Provider.of<AlbumController>(context, listen: false).loadMedia();
     setState(() {});
@@ -175,19 +175,29 @@ class _MediaViewerPageState extends State<MediaViewerPage> {
       widget.media.removeAt(_currentIndex);
 
       // Check if there is a next media to display
-      if (_currentIndex < widget.media.length) {
-        // Move to the next media
-        _pageController.jumpToPage(_currentIndex);
+
+      if (_currentIndex > 0) {
+        _pageController.animateToPage(_currentIndex--,
+            duration: Duration(seconds: 1), curve: Curves.easeIn);
       } else {
-        // No more media, go to the previous one if available
-        if (_currentIndex > 0) {
-          _currentIndex = widget.media.length - 1;
-          _pageController.jumpToPage(_currentIndex);
-        } else {
-          // No more media left, exit the viewer
-          Navigator.pop(context);
-        }
+        Navigator.pop(context);
       }
+      // 4 5
+      // if (_currentIndex < widget.media.length) {
+      //   // Move to the next media
+      //   _pageController.animateToPage(_currentIndex--,
+      //       duration: const Duration(seconds: 1), curve: Curves.easeIn);
+      // } else {
+      //   // No more media, go to the previous one if available
+      //   if (_currentIndex > 0) {
+      //     _currentIndex = widget.media.length - 1;
+      //     _pageController.animateToPage(_currentIndex,
+      //         duration: const Duration(seconds: 1), curve: Curves.easeIn);
+      //   } else {
+      //     // No more media left, exit the viewer
+      //     Navigator.pop(context);
+      //   }
+      // }
     });
 
     // Reload the media from the album to reflect changes in the album pages
