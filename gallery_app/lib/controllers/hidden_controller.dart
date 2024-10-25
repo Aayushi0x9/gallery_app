@@ -39,16 +39,20 @@ class HiddenMediaProvider with ChangeNotifier {
     final hiddenAssets = <AssetEntity>[];
 
     // Loop through asset paths and check if the asset ID is hidden
-    for (final assetPath in assetPathList) {
-      final assets = await assetPath.getAssetListPaged(page: 0, size: 100);
-      hiddenAssets
-          .addAll(assets.where((asset) => hiddenAssetIds.contains(asset.id)));
+    final existingAssets = <AssetEntity>[];
+    for (final asset in hiddenAssets) {
+      final exists = await asset.exists; // Check if the asset still exists
+      if (exists) {
+        existingAssets.add(asset); // Only add if the asset exists
+      }
     }
+    _hiddenMedia =
+        existingAssets; // Update the in-memory list with existing assets
+    notifyListeners();
 
-    _hiddenMedia = hiddenAssets; // Update in-memory list
     notifyListeners(); // Notify listeners to update UI
 
-    return hiddenAssets; // Return hidden assets
+    return _hiddenMedia; // Return hidden assets
   }
 
   // Remove media from hidden list and SharedPreferences
@@ -97,13 +101,32 @@ class HiddenMediaProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  // Delete selected media (permanently remove from hidden list)
-  void deleteSelectedMedia() {
+  Future<void> deleteSelectedMedia() async {
+    List<String> assetIds = _selectedMedia.map((asset) => asset.id).toList();
+
+    // Permanently delete all selected media in one go
+    await PhotoManager.editor.deleteWithIds(assetIds);
+
+    // Remove the selected media IDs from SharedPreferences
+    for (final id in assetIds) {
+      await _removeHiddenAssetId(id);
+    }
+    // Remove selected media from in-memory list (_hiddenMedia)
     _hiddenMedia.removeWhere((asset) => _selectedMedia.contains(asset));
+    // Clear selection and exit selection mode
     _selectedMedia.clear();
     _isSelectionMode = false;
+    // Notify listeners to update the UI
     notifyListeners();
   }
+
+  // Delete selected media (permanently remove from hidden list)
+  // void deleteSelectedMedia() {
+  //   _hiddenMedia.removeWhere((asset) => _selectedMedia.contains(asset));
+  //   _selectedMedia.clear();
+  //   _isSelectionMode = false;
+  //   notifyListeners();
+  // }s
 
   // Check if a media is selected in the selection mode
   bool isSelected(AssetEntity asset) {

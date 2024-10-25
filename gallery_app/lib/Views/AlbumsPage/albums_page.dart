@@ -217,6 +217,7 @@ class _AlbumsPageState extends State<AlbumsPage> {
                                                                 FontWeight.w400,
                                                           ),
                                                         ),
+                                                        //Album Count
                                                         FutureBuilder<int>(
                                                           future: album
                                                               .assetCountAsync, // The future that provides the album asset count

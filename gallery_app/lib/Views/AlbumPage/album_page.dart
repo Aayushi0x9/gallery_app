@@ -109,8 +109,8 @@ class _AlbumPageState extends State<AlbumPage> {
 
                         // Show error text if there is no data or if there is an error
                         return const Center(
-                          child: Text('Error loading thumbnail'),
-                        );
+                            // child: Text('Error loading thumbnail'),
+                            );
                       },
                     );
                   },

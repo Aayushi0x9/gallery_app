@@ -93,7 +93,7 @@ class HiddenMediaPageState extends State<HiddenMediaPage> {
             ),
             GestureDetector(
               onTap: () {
-                provider.unhideSelectedMedia();
+                provider.deleteSelectedMedia();
                 Navigator.of(context).pop();
               },
               child: Container(
